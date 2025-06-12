@@ -4,6 +4,8 @@ import db from "~/db";
 type Suggestion = {
   term: string;
   popularity: number;
+  description: string | null;
+  image_src: string | null;
 };
 
 export type SuggestionResponse = {
@@ -11,33 +13,38 @@ export type SuggestionResponse = {
   query: string;
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function getSearch({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const query = url.searchParams.get("q");
+  const query = url.searchParams.get("q") || "";
   const limit = parseInt(url.searchParams.get("limit") || "10");
-
-  if (!query || query.trim().length === 0) {
-    return data({ suggestions: [] });
-  }
 
   const searchTerm = query.trim().toLowerCase();
 
   try {
     const result = await db.query(
-      `SELECT term, popularity 
+      `SELECT term, popularity, description, image_src 
        FROM search 
-       WHERE LOWER(term) LIKE $1 OR LOWER(term) LIKE $2
+       WHERE CASE 
+         WHEN $1 != '' THEN (LOWER(term) LIKE $2 OR LOWER(term) LIKE $3)
+         ELSE TRUE 
+       END
        ORDER BY 
-         CASE WHEN LOWER(term) LIKE $1 THEN 1 ELSE 2 END,
-         popularity DESC,
-         LENGTH(term) ASC
-       LIMIT $3`,
-      [`${searchTerm}%`, `%${searchTerm}%`, limit],
+         CASE 
+           WHEN $1 != '' THEN
+             CASE WHEN LOWER(term) LIKE $2 THEN 1 ELSE 2 END
+           ELSE RANDOM()
+         END,
+         CASE WHEN $1 != '' THEN popularity ELSE 1 END DESC,
+         CASE WHEN $1 != '' THEN LENGTH(term) ELSE 1 END ASC
+       LIMIT $4`,
+      [searchTerm, `${searchTerm}%`, `%${searchTerm}%`, limit],
     );
 
     const suggestions = result.rows.map((row) => ({
       term: row.term,
       popularity: row.popularity,
+      description: row.description,
+      image_src: row.image_src,
     }));
 
     return data<SuggestionResponse>({
