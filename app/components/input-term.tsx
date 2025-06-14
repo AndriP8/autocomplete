@@ -22,6 +22,10 @@ const InputTerm = forwardRef<HTMLInputElement, Omit<InputTermProps, "ref">>(
           placeholder="Try typing 'javascript', 'react', or 'python'..."
           className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white transition-all duration-200"
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+          aria-label="Search"
         />
 
         {isLoading && (
